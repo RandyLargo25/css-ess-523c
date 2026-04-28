@@ -193,7 +193,7 @@ window.Quarto = {
 </header>
 
 
-<pre class="qagx#"><code>#| echo: false
+<pre class="etlr#"><code>#| echo: false
 #| fig-align: center
 #| out.width: '100%'
 
@@ -253,7 +253,7 @@ knitr::include_graphics('img/04-dams.jpg')</code></pre>
 <span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 </div>
-<pre class="uaw#"><code>#for check structure
+<pre class="zcm#"><code>#for check structure
 print(conus_counties)</code></pre>
 <div class="cell">
 <details class="code-fold">
@@ -652,7 +652,7 @@ Projected CRS: NAD83 / Conus Albers</code></pre>
 </div>
 <div class="callout-body-container callout-body">
 <p>After simplification, verify the boundary is still valid and covers all dams:</p>
-<pre class="uaw#"><code>#| eval: false
+<pre class="zcm#"><code>#| eval: false
 # Check: Is the simplified boundary valid?
 st_is_valid(boundary_simplified)
 
@@ -3211,7 +3211,7 @@ plot(boundary_simplified, main = "Simplified")</code></pre>
 <p>The NID CSV has messy column names (all caps with spaces). The <code>janitor::clean_names()</code> function converts them to clean snake_case (<code>LONGITUDE</code> → <code>longitude</code>, <code>DAM NAME</code> → <code>dam_name</code>). This is a lightweight utility that saves time and prevents typos in downstream code. It’s part of data wrangling best practice.</p>
 </div>
 </div>
-<pre class="uaw#"><code>#| message: false
+<pre class="zcm#"><code>#| message: false
 # Prefer a local NID CSV named `nation.csv`; otherwise download to that filename
 nid_url &lt;- "https://nid.sec.usace.army.mil/api/nation/csv"
 dir.create("data", showWarnings = FALSE)
@@ -3467,7 +3467,7 @@ dams2 &lt;- dams %&gt;%
 <span id="cb109-12"><a href="#cb109-12" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 </div>
-<pre class="uaw#"><code>#test
+<pre class="zcm#"><code>#test
 plot_dam_tessellation(grid_dams, "Square Grid")</code></pre>
 </section>
 <section id="step-3.5" class="level3">
@@ -3483,7 +3483,7 @@ plot_dam_tessellation(grid_dams, "Square Grid")</code></pre>
 <span id="cb111-5"><a href="#cb111-5" aria-hidden="true" tabindex="-1"></a>county_dams <span class="ot">&lt;-</span> <span class="fu">count_points_in_polygons</span>(dams2, counties, <span class="st">"id"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 </div>
-<pre class="uaw#"><code>#checking 
+<pre class="zcm#"><code>#checking 
 names(county_dams)</code></pre>
 <div class="cell">
 <details class="code-fold">
@@ -3595,7 +3595,7 @@ names(county_dams)</code></pre>
 <h1>Question 4</h1>
 <p>The NID provides a comprehensive data dictionary <a href="https://files.hawaii.gov/dbedt/op/gis/data/nid_dams_data_dictionary.htm#Purposes">here</a>. In it we find that dam purposes are designated by a character <a href="https://files.hawaii.gov/dbedt/op/gis/data/nid_dams_data_dictionary.htm#Purposes">code</a>.</p>
 <p>These are shown below for convenience (built using knitr on a data.frame called <code>nid_classifier</code>):</p>
-<pre class="uaw#"><code>#| echo: false
+<pre class="zcm#"><code>#| echo: false
 #| eval: true
 
 nid_classifier = data.frame(matrix(c('I' , 'Irrigation',
@@ -3611,7 +3611,7 @@ nid_classifier = data.frame(matrix(c('I' , 'Irrigation',
 'G' , 'Grade Stabilization',
 'O' , 'Other'), ncol = 2, byrow = T)) %&gt;% 
   setNames(c("abbr", "purpose"))</code></pre>
-<pre class="uaw#"><code>#| echo: false
+<pre class="zcm#"><code>#| echo: false
 #| eval: true
 
 knitr::kable(nid_classifier,              
@@ -3629,7 +3629,7 @@ knitr::kable(nid_classifier,
 </ul>
 <hr>
 <p>To overcome this data structure limitation, we can identify how many dams serve each purpose by splitting the PURPOSES values (<code>strsplit</code>) and tabulating the unlisted results as a data.frame. Effectively this is double/triple/quadruple counting dams bases on how many purposes they serve:</p>
-<pre class="uaw#"><code>#| echo: false
+<pre class="zcm#"><code>#| echo: false
 #| eval: false
 # create a vector of all characters in your purpose and unlist 
 dam_freq &lt;- strsplit(dams2$PURPOSES, split = "") %&gt;%
@@ -3640,7 +3640,7 @@ dam_freq &lt;- strsplit(dams2$PURPOSES, split = "") %&gt;%
   left_join(nid_classifier) %&gt;% 
   mutate(lab = paste0(purpose, "\n(", abbr, ")"))</code></pre>
 <p>The result of this would indicate:</p>
-<pre class="uaw#"><code>#| echo: false
+<pre class="zcm#"><code>#| echo: false
 #| eval: false
 
 ggplot() + 
@@ -3660,7 +3660,7 @@ ggplot() +
 </ul>
 <hr>
 <p>For example:</p>
-<pre class="uaw#"><code>#| echo: true
+<pre class="zcm#"><code>#| echo: true
 #| eval: true
 # Find flood control dams in the first 5 records:
 dams2$PURPOSES[1:5]
@@ -3892,7 +3892,7 @@ grepl("F", dams2$PURPOSES[1:5])</code></pre>
 <li>Map 3: Dam count by tile (you already have this from Q3)</li>
 </ul>
 <p>Do you see geographic clustering of old vs.&nbsp;new dams? Large vs.&nbsp;small dams?</p>
-<pre class="uaw#"><code>#checking if it still exist 
+<pre class="zcm#"><code>#checking if it still exist 
 names(dams2)</code></pre>
 <div class="cell">
 <details class="code-fold">
@@ -3975,7 +3975,7 @@ names(dams2)</code></pre>
 </div>
 </div>
 </div>
-<pre class="uaw#"><code>#added: already created in question 3
+<pre class="zcm#"><code>#added: already created in question 3
 #Map3: Dam count
 plot_dam_tessellation(hex_summary, "Dam Count by Tile")</code></pre>
 <div class="cell">
@@ -4018,7 +4018,7 @@ plot_dam_tessellation(hex_summary, "Dam Count by Tile")</code></pre>
 <p>This preserves statistical integrity: neighbors’ contributions are computed correctly, but you only correlate where real observations exist.</p>
 </div>
 </div>
-<pre class="uaw#"><code>#| eval: false
+<pre class="zcm#"><code>#| eval: false
 # Suggested workflow (write your own implementation):
 # 1) build vectors for count, age, and size attributes by tile
 # 2) handle NAs explicitly before matrix multiplication
@@ -4026,7 +4026,7 @@ plot_dam_tessellation(hex_summary, "Dam Count by Tile")</code></pre>
 # 4) correlate each attribute with its lag
 # 5) report values and classify as weak/moderate/strong with your own thresholds</code></pre>
 <p><strong>Summarize in a table</strong>:</p>
-<pre class="uaw#"><code>#| eval: false
+<pre class="zcm#"><code>#| eval: false
 # Create a compact summary table with:
 # - attribute name
 # - correlation with spatial lag
@@ -4056,7 +4056,7 @@ plot_dam_tessellation(hex_summary, "Dam Count by Tile")</code></pre>
 <span id="cb160-3"><a href="#cb160-3" aria-hidden="true" tabindex="-1"></a>W_std <span class="ot">&lt;-</span> <span class="fu">as.matrix</span>(W)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 </div>
-<pre class="uaw#"><code>#relocating for render issue
+<pre class="zcm#"><code>#relocating for render issue
 #creating neighbors for polygon
 #checking
 dim(W_std)
@@ -4444,7 +4444,7 @@ county_dams &lt;- st_join(county_units, dams_sf) %&gt;%
    0.00    7.00   17.00   29.66   37.00  394.00 </code></pre>
 </div>
 </div>
-<pre class="uaw#"><code>#checking
+<pre class="zcm#"><code>#checking
 sum(hex_dams_q6$n == 0) # 267
 sum(county_dams_q6$n == 0) # 116</code></pre>
 </section>
@@ -4865,7 +4865,7 @@ sum(county_dams_q6$n == 0) # 116</code></pre>
 <span id="cb218-11"><a href="#cb218-11" aria-hidden="true" tabindex="-1"></a>  )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 </div>
-<pre class="uaw#"><code>#testing second one below
+<pre class="zcm#"><code>#testing second one below
 #hex_lisa_obj &lt;- hex_dams_q6 %&gt;%
  # left_join(
   #  moran_hex_df %&gt;% select(id, quadrant),
