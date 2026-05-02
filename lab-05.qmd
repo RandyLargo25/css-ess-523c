@@ -20,7 +20,7 @@ library(tidymodels)
 
 In this lab, we will explore predictive modeling in hydrology using the `tidymodels` framework and the CAMELS (Catchment Attributes and Meteorology for Large-sample Studies) dataset.
 
-```{r}
+```{r}#}
 #| echo: false
 #| out.width: "75%"
 #| fig.align: "center"
@@ -228,7 +228,7 @@ Exploratory Data Analysis
 
 First, lets make a map of the sites. Use the `borders()` ggplot function to add state boundaries to the map and initially color the points by the mean flow (`q_mean`) at each site.
 
-```{r}
+```{r}#}
 #| warning: false
 ggplot(data = camels, aes(x = gauge_lon, y = gauge_lat)) +
   borders("state", colour = "gray50") +
@@ -237,7 +237,9 @@ ggplot(data = camels, aes(x = gauge_lon, y = gauge_lat)) +
   ggthemes::theme_map()
 ```
 
-My written answer: The Map shows a clear spatial pattern in the mean stream flow: q_mean across the US. Higher flows: blue are concentrated in the wetter regions such as the Pacific Northwest and the eastern US, while lower flow: pink apper in arid regions like the southwest. This pattern reflects underlying climate gradients, such as precipitation and evapotranspiration, which vary smoothly across space. The strong geographic structure suggests that location plays an important role in determining streamflow, meaning that some predictors in later models may act as proxies for spatial position rather than purely physical processes. We can take a moment here to learn a few new things about `ggplot2`!
+My written answer: The Map shows a clear spatial pattern in the mean stream flow: q_mean across the US. Higher flows: blue are concentrated in the wetter regions such as the Pacific Northwest and the eastern US, while lower flow: pink apper in arid regions like the southwest. This pattern reflects underlying climate gradients, such as precipitation and evapotranspiration, which vary smoothly across space. The strong geographic structure suggests that location plays an important role in determining streamflow, meaning that some predictors in later models may act as proxies for spatial position rather than purely physical processes.
+
+We can take a moment here to learn a few new things about `ggplot2`!
 
 ::: callout-note
 ### Color scales
@@ -431,7 +433,7 @@ We have to be careful about how we do this with the base R approach:
 
 The `broom` package provides a convenient way to extract model predictions and residuals. We can use the `augment` function to add predicted values to the test data. However, if we use `augment` directly on the test data, we will get incorrect results because the preprocessing steps defined in the `recipe` object have not been applied to the test data.
 
-```{r}
+```{r}#
 #| error: true
 nrow(camels_test)
 nrow(camels_train)
@@ -442,7 +444,7 @@ broom::augment(lm_base, data = camels_test)
 
 The `predict` function can be used to make predictions on new data. However, if we use `predict` directly on the test data, we will get incorrect results because the preprocessing steps defined in the `recipe` object have not been applied to the test data.
 
-```{r}
+```{r}#
 #| error: true
 camels_test$p2 = predict(lm_base, newdata = camels_test)
 
@@ -727,7 +729,7 @@ xgb_model <- boost_tree() %>%
 ```
 
 ```{r}
-#neural network (bagged MLP via baguetta)
+#neural network (bagged MLP via baguette)
 nn_model <- bag_mlp() %>%
   set_engine("nnet") %>%
   set_mode("regression")
@@ -753,10 +755,14 @@ library(tidymodels)
 
 ```{r}
 #fit all models with cross validation
+
+#cls_metrics <- metric_set(rmse, rsq, mae) #added in later
+
 wf <- wf %>%
   workflow_map(
     "fit_resamples",
     resamples = camels_cv
+    #metrics = cls_metrics. #added in later
   )
 ```
 
@@ -769,14 +775,14 @@ autoplot(wf)
 rank_results(wf, rank_metric = "rsq", select_best = TRUE)
 ```
 
-My written answer: Among the four models, the neural network performed the best, achieving the highest R\^2 and lowest RMSE under cross validation. This indicates it is most effective at capturing the nonlinear relationships between aridity, precip, and streamflow. I would move forward with the neural network model because it provides that strongest predictive, while the weaker performance of XGBoost likely reflects the lack of hyperparameter tuning.
+My written answer: Among the four models, the neural network got a higher R\^2 and lowest RMSE among the other models and indicateing the strongest predictive performance. This suggests it is better able to capture the nonlinear relationships between aridity, precipitation, and streamflow compared to the liner model and tree-based approaches. Going forward with the neural network model maybe ok because of its good performance, through the relatively similar performance of the random forest and XGBoost models suggest that additional hyperparmater tuning could further improve those models.
 
 # Bridge to Q4: what the lectures cover
 
 The worked example above stops at a single random-forest fit with default hyperparameters. Q4 asks you to extend it with the rest of the unit. Before starting, re-skim the relevant lecture sections — you'll be lifting patterns directly from them:
 
 | Q4 task | Lecture reference |
-|----|----|
+|------------------------------------|------------------------------------|
 | EDA with `skimr`/`visdat`, normality checks, stratification | **Week 5-1** — *Exploratory Data Analysis*, *Data Normality*, *Stratification* |
 | `recipe` design (impute, dummy, normalize, interact) | **Week 5-1** — *Feature engineering with `recipes`*, *Common normalization techniques* |
 | Workflow sets across multiple models | **Week 5-1** — *Further simplification: `workflowsets`* |
@@ -806,17 +812,192 @@ This question asks you to apply the full toolkit from Week 5 and Week 6: EDA, re
 - [ ] Create an initial split with 75% used for training and 25% for testing. Consider whether stratification (e.g., by `aridity` quartile or hydrologic class) is appropriate and **explain your choice**.
 - [ ] Extract your training and testing sets
 
+```{r}
+#setting the seed
+set.seed(123)
+```
+
+```{r}
+#using skimr and or visdat
+library(skimr)
+library(visdat)
+
+skim(camels)    #for info
+vis_dat(camels)
+```
+
+My written answer: The data-set contains 671 observation and 59 values, with the majority (53) being numeric predictors and a small number categorical variables. Missingness is generally low, with most variables having complete data, through a few variables (geo1_2nd_class, root_depth\_\*) contain moderate missing values. May hydrologic and environmental variables, including q_mean, p_mean, and basin area metrics, exhibit strong right- skewed distributions, as indicated by their histograms and summary statistics. These patterns suggest the need for preprocessing steps such as log. transformation for skewed variables, normalization for differing scales, and handling missing values within the modeling recipe.
+
+```{r}
+#Distribution plots
+#outcome
+ggplot(camels, aes(x = q_mean)) +
+  geom_histogram(bins = 30, fill = "steelblue") +
+  theme_linedraw() +
+  labs(title = "Distribution of Mean Streamflow (q_mean)")
+```
+
+```{r}
+#for log version
+ggplot(camels, aes(x = logQmean)) +
+  geom_histogram(bins = 30, fill = "darkblue") +
+  theme_linedraw() +
+  labs(title = "Distribution of Log Mean Streamflow")
+```
+
+```{r}
+#for key predictors
+ggplot(camels, aes(x = p_mean)) +
+  geom_histogram(bins = 30, fill = "forestgreen") +
+  theme_linedraw() +
+  labs(title =  "Distribution of Mean Precipitation")
+```
+
+```{r}
+ggplot(camels, aes(x = aridity)) +
+  geom_histogram(bins = 30, fill = "darkorange") +
+  theme_linedraw() +
+  labs(title = "Distribution of Aridity")
+```
+
+My written answer: The distribution of q_mean is highly right skewed, with many basins have low steamflow and a small number exhibition very high values. Applying a log transformation relsuts in a more symmetric distribution, supporting it use as the modeling outcome. Similar right skewed patterns are observed in predictors such as precipitation and basin area, indicating that transformations may also be beneficial for predictors.
+
+```{r}
+library(ape)
+```
+
+```{r}#
+#issue samp and logQmean not found, may have deleted funcion?
+set.seed(10)
+samp_clean <- samp |> drop_na()   #samp missing?
+
+coords <- cbind(samp_clean$gauge_lon, samp_clean$gauge_lat)
+dmat <- as.matrix(dist(coords))
+
+W <- 1 / dmat
+diag(W) <- 0
+W <- W / rowSums(W)
+
+moran_results <- samp_clean |>
+  select(where(is.numeric), -q_mean, -logQmean) |>    #logQmean missing?
+  map_dfr(
+    ~ tibble(I = Moran.I(.x, W)$observed),
+    .id = "variable"
+  ) |>
+  arrange(desc(I))
+```
+
+```{r}
+#to fix error
+# Create log-transformed outcome FIRST
+camels <- camels |> 
+  mutate(logQmean = log(q_mean))
+
+set.seed(10)
+
+samp <- camels_train |> 
+  slice_sample(n = 400)
+
+samp_clean <- samp |> 
+  drop_na()
+
+coords <- cbind(samp_clean$gauge_lon, samp_clean$gauge_lat)
+dmat <- as.matrix(dist(coords))
+
+W <- 1 / dmat
+diag(W) <- 0
+W <- W / rowSums(W)
+
+moran_results <- samp_clean |>
+  select(where(is.numeric), -q_mean, -logQmean) |>
+  map_dfr(
+    ~ tibble(I = Moran.I(.x, W)$observed),
+    .id = "variable"
+  ) |>
+  arrange(desc(I))
+```
+
+My written answer: Morgan's I results show strong positive spatial autocorrelation in several predictors. As expected, geographic coordinates (gauge_1on and gauge_1at) exhibit the highest values, confirming strong spatial structure. Importantly, climate variables such as precipitation, precipitation seasonality, and vegetation indices also show high Morgan's I values, indicating that they vary smoothly across space. This suggests that many predictors carry geographic info and may act as proxies for locations. As a result, models trained on these features may partially rely on spatial patterns rather than purely physical relationships, reinforcing the need for spatial cross-validation to properly assess generalization.
+
+```{r}
+#for train/test split
+#using 75/25
+
+set.seed(123)
+
+camels_split <- initial_split(camels, prop = 0.75)
+
+camels_train <- training(camels_split)
+camels_test <- testing(camels_split)
+```
+
+My written answer: The data were split into 75% training and 25% testing set to ensure sufficient data for model training while retaining an independent data-set for evaluation. Stratification was not add because the outcome variable is continuous, and it is distribution, while right skewed, does not show strong discrete grouping that would require stratified sampling. Additionally, spatial structure is a key concern in this dataset, this will be addressed better by using spatial cross validation rather than stratified random splits.
+
 ## Recipe (30) — *Week 5-1*
 
 - [ ] Define a formula you want to use to predict `logQmean`
 - [ ] In 5–7 sentences, justify your predictor choice. Consult the downloaded PDF; ground **each** recipe step (log, normalize, interact, naomit, impute, ...) in what the EDA above showed.
 - [ ] Build a recipe that handles those predictors. Your recipe should contain **at least three** `step_*` calls beyond the formula, and each should be there for a reason you can name.
 
+
+I choose: Using formula for to predict (logQmean)
+logQmean ~ aridity + p_mean + pet_mean + soil_porosity + elev_mean + frac_forest
+
+My written answer: The model is designed to predict log transformed mean stream-flow (logQmean) using climatic, soil, vegetation, and topographic catchment attributes. A log transformation is applied to the response variable to reduce right skewness observed in the distribution of q_mean and to stabilize variance across basins. Key predictors such as aridity, mean precipitation (p_mean) and potential evapotranspiration (pet_mean) are included because EDA and correlation analysis shhow strong relationships with stream flow. Soil and vegetation variables are included because they represent catchment storage and infiltration capacity, which influence runoff generation. Topographic variables such as elev_mean are included because elevation controls temp., Precip phase, and runoff timing. Several predictors exhibit skewed distributions, so normalization is applied to ensure comparable scales for models sensitive to magnitude differences. Missing values are removed to make sure the model is stabel and compatibility across re-sampling folds.
+
+```{r}
+#for recipe 
+rec <- recipe(logQmean ~ aridity + p_mean + pet_mean +
+                soil_porosity + elev_mean + frac_forest,
+              data = camels_train) %>%
+  
+  # handle missing values
+  step_naomit(all_predictors(), all_outcomes()) %>%
+  
+  # log-transform skewed predictors
+  step_log(aridity, p_mean, pet_mean) %>%
+  
+  # normalize predictors for modeling stability
+  step_normalize(all_predictors())
+```
+
 ## Define 3 models (30) — *Week 6-1*
 
 - [ ] Define a random forest model using the `rand_forest` function (engine `ranger`, mode `regression`)
 - [ ] Define two other models of your choice. The Week 6-1 zoo (`linear_reg`, `boost_tree`, `svm_rbf`, `svm_poly`, `mlp`, `bag_mlp`, `decision_tree`) is a good menu — the comparison table in that deck summarizes strengths and weaknesses.
 - [ ] For each model, briefly note (one sentence) why it's a reasonable candidate for this regression problem — what kind of structure does it capture?
+
+```{r}
+#choseing random forest
+rf_model <- rand_forest() %>%
+  set_engine("ranger") %>%
+  set_mode("regression")
+```
+
+My wirtten answer: The random forest works for this problem because they capture nonlinear interactions between climate and catchment attributes (precip, aridity, soil controls on runoff) without requiring explicit functional assumptions, which is important given the heterogeneous and spatially varying hydrologic regimes in CAMELS.
+
+```{r}
+#XGBoost (boost_tree)
+xgb_model <- boost_tree(
+  trees = 500,
+  tree_depth = 6,
+  learn_rate = 0.05
+) %>%
+  set_engine("xgboost") %>%
+  set_mode("regression")
+```
+
+My written answer: XGBoost is good for this data set because it models complex nonlinear structure through sequential boosting, allowing it to iteratively correct errors in stream flow predictions driven by interacting hydrologic controls
+
+```{r}
+#for neural network (bag_mlp)
+
+nn_model <- bag_mlp() %>%
+  set_engine("nnet") %>%
+  set_mode("regression")
+```
+
+My written answer: a neural network is a suitable because it can approximate highly nonlinear functional relationship between climate, soil, and vegetation variables and stream-flow through layered feature transformation.
 
 ## Workflow set — compare with *honest* CV (35) — *Week 5-2*
 
@@ -827,6 +1008,112 @@ With your preprocessing steps and models defined, build a `workflow_set` and com
 - [ ] Use `autoplot()` and `rank_results()` to compare the models under each scheme
 - [ ] Describe the gap (5–7 sentences): which model wins, how much does performance drop when you move from random to spatial CV, and which number do you trust as your generalization estimate? What does the spread of per-fold metrics tell you about *where* your model struggles? Recall from lecture that a **small** gap is a signal that your predictors carry real transferable signal — not a failed diagnostic.
 
+```{r}
+library(sf)
+```
+
+```{r}
+#original
+#convert to spatial object (for spatial CV)
+
+camels_sf <- camels_train %>%
+  st_as_sf(coords = c("gauge_lon", "gauge_lat"), crs = 4326)
+```
+
+```{r}#
+#testing
+camels_train_sf <- camels_train %>%
+  st_as_sf(coords = c("gauge_lon", "gauge_lat"), crs = 4326)
+```
+
+```{r}
+#for random CV, made earlier 
+set.seed(123)
+
+camels_cv <- vfold_cv(camels_train, v = 10)
+```
+
+```{r}
+library(spatialsample)
+```
+
+```{r}#
+#original code
+#spatial CV, choosing spatial block CV
+set.seed(123)
+
+camels_spatial_cv <- spatial_block_cv(
+  camels_sf,
+  v = 10
+)
+```
+
+```{r}
+#testing 
+camels_spatial_cv <- spatial_clustering_cv(
+  camels_sf,
+  v = 10
+)
+```
+
+```{r}
+#workflow set
+
+wf <- workflow_set(
+  preproc = list(rec = rec),
+  models = list(
+    linear = lm_model,
+    rf = rf_model,
+    xgb = xgb_model,  #changed xgd to xgb
+    nn = nn_model
+  )
+)
+```
+
+```{r}
+#for random CV
+
+wf_random <- wf %>%
+  workflow_map(
+    "fit_resamples",
+    resamples = camels_cv
+  )
+```
+
+```{r}
+#for spatial CV
+wf_spatial <- wf %>%
+  workflow_map(
+    "fit_resamples",
+    resamples = camels_spatial_cv
+  )
+```
+
+```{r}
+#compare
+
+autoplot(wf_random)
+rank_results(wf_random, rank_metric = "rsq")
+
+autoplot(wf_spatial)
+rank_results(wf_spatial, rank_metric = "rsq")
+```
+
+```{r}
+#direct comparison
+#added in later
+
+wf_random %>% collect_metrics() %>% mutate(type = "random") %>%
+  bind_rows(
+    wf_spatial %>% collect_metrics() %>% mutate(type = "spatial")
+  ) %>%
+  ggplot(aes(x = wflow_id, y = mean, fill = type)) +
+  geom_col(position = "dodge") +
+  facet_wrap(~ .metric)
+```
+
+My written answer: Under random cross-validation, the models show strong predicitve performance, with the random forest and XGBoost models typically achieving the heighest R\^2 values. However, performance decreases under spatial cross validation, indicating that some of predictive power in the random CV case was inflated by spatial autocorrelation between nearby basins. The random forest model generally remains the most stable across both re-sampling strategies, suggesting it capiutres more transferable hydrologic structure rather than purely gerographic proximity. The drop in performance form random to spatial CV represents a more realistic estimate of generalization error and should be preferred for interpreting real world predictive skill. The spread in fold level metrics under spatial CV suggests that model performance varies across climatic and physiographic regions, with some basins being systematically harder to predict than others. Overall, the spatial CV results provide a more honest assessment of model generalization and indicate that geographic structure plays a meaningful role in stream flow prediction.
+
 ## Tune the best model (25) — *Week 6-1*
 
 - [ ] Tag **at least two** hyperparameters with `tune()` in your chosen model specification
@@ -835,11 +1122,115 @@ With your preprocessing steps and models defined, build a `workflow_set` and com
 - [ ] Show the tuning landscape with `autoplot()` and identify the best combination with `show_best()` / `select_best()`
 - [ ] In 2–3 sentences, describe which hyperparameters mattered most and what you learned about the model's sensitivity
 
+```{r}#
+#orginial 
+#issue down stream
+#Tune Random Forest
+#defining model with tunable hyperparameters
+rf_tune <- rand_forest(
+  mtry = tune(),
+  min_n = tune(),
+  trees = 500
+) %>%
+  set_engine("ranger") %>%
+  set_mode("regression")
+```
+
+```{r}
+#added "importance =" for fix
+rf_tune <- rand_forest(
+  mtry = tune(),
+  min_n = tune(),
+  trees = 500
+) %>%
+  set_engine("ranger", importance = "impurity") %>%   # ← THIS IS THE FIX
+  set_mode("regression")
+```
+
+
+```{r}
+#building a name grid
+rf_grid <- grid_regular(
+  mtry(range = c(2,6)),
+  min_n(range = c(5,30)),
+  levels = 5
+)
+```
+
+My written answer: a regular grid was used to systematically explore combinations of tree complexity and smoothing (min_n), ensuring coverage of full parameter space rather than random sampling.
+
+```{r}
+#workflow for tuning
+rf_wf_tune <- workflow() %>%
+  add_recipe(rec) %>%
+  add_model(rf_tune)
+```
+
+```{r}
+#running tuning (for spatial CV)
+set.seed(123)
+
+rf_tuned <- tune_grid(
+  rf_wf_tune,
+  resamples = camels_spatial_cv,
+  grid = rf_grid,
+  control = control_grid(save_pred = TRUE)
+)
+```
+
+```{r}
+#tuning landscape
+autoplot(rf_tuned) #takes a while
+```
+
+```{r}#
+#if needed
+show_best(rf_tuned, metric = "rsq")
+```
+
+```{r}# 
+#original 
+#issue down steam
+#for selecting best model
+best_rf <- select_best(rf_tuned, metric = "rsq")
+best_rf 
+```
+```{r}
+best_rf <- select_best(rf_tuned, metric = "rsq")
+
+final_rf_fit <- finalize_workflow(rf_wf_tune, best_rf) %>%
+  fit(data = camels_train)
+```
+
+My written answer: The most influential hyperparameter was mtry, indicating that the number of predictors considered at each splot strongly affects predictive performance, reflecting the balance between bias and variance. Smaller min_n values generally imporved pergormance, suggesting that deeper trees better capture heterogeneity in hydrologic responses across the basins. The model shows moderate sensitivity to tree complexity, but performance stablizies once a sufficient level of randomness is introduced. 
+
 ## Variable importance (25) — *Week 5-2*
 
 - [ ] Produce a `vip::vip()` plot for your tuned model (pattern: `extract_fit_parsnip() |> vip()`)
 - [ ] Interpret the top predictors (4–6 sentences). Cross-reference against the predictor Moran's I you computed in EDA — are any of the top VIP features *also* highly spatially autocorrelated? If so, they could be acting as **geographic proxies** — discuss whether the importance reflects *mechanism* or *location* (Week 5-2, Part 4).
 - [ ] If the model you chose cannot provide VIP, instead discuss the interpretability trade-off you accepted and how you would diagnose the same question (permutation importance via `vip::vi_permute()`, partial dependence, etc.).
+
+```{r}
+#fitting final tuned model
+final_rf_wf <- finalize_workflow(rf_wf_tune, best_rf)
+
+final_rf_fit <- final_rf_wf %>%
+  fit(data = camels_train)
+```
+
+```{r}
+library(vip)
+```
+
+```{r}
+#VIP plot
+
+final_rf_fit %>%
+  extract_fit_parsnip() %>%
+  vip()
+```
+
+My written answer: 
 
 ## Final fit & evaluate (25) — *Week 6-1*
 
@@ -850,6 +1241,81 @@ Use the canonical tidymodels closing move (Week 6-1, *The final fit!*):
 - [ ] Use `collect_metrics()` and `collect_predictions()` to report final test-set performance
 - [ ] Create a plot of observed vs predicted `logQmean` on the **test set** with clear title, axis labels, and a compelling color scale (e.g., colored by aridity or region). Include a 1:1 reference line.
 - [ ] In 3–5 sentences, describe what you think of the results — including how the test-set metrics compare to your spatial-CV estimate, where the model under- or over-predicts, and what you'd investigate next.
+
+Using: best_rf <- select_best(rf_tuned, metric = "rsq")
+```{r}
+#finalize tuned workflow
+final_rf_wf <- finalize_workflow(rf_wf_tune, best_rf)
+```
+
+```{r}
+#last_fit()  clean evaluation
+
+final_rf_last <- last_fit(
+  final_rf_wf,
+  split = camels_split
+)
+```
+
+```{r}
+#for collecting metrics
+
+collect_metrics(final_rf_last)
+```
+
+```{r}
+#for getting predictions
+
+preds <- collect_predictions(final_rf_last)
+```
+
+```{r}
+names(preds)
+```
+
+```{r}#
+# error, rejoin test data manually did not work for aridiy and logQmean
+preds <- collect_predictions(final_rf_last) %>%
+  left_join(camels_test %>% mutate(.row = row_number()), by = ".row")
+```
+
+```{r}#
+#for error
+test_data <- camels_test %>%
+  mutate(.row = row_number())
+
+preds <- bind_cols(test_data, preds)
+```
+
+```{r}
+#for error
+#found there are two logQmean colmun in data
+preds_clean <- preds %>%
+  select(logQmean = logQmean...63,
+         .pred,
+         aridity)
+```
+
+
+```{r}
+library(ggplot2)
+```
+
+```{r}
+ggplot(preds_clean, aes(x = logQmean, y = .pred, color = aridity)) +
+  geom_point(alpha = 0.7) +
+  geom_abline(linetype = "dashed") +
+  scale_color_viridis_c() +
+  theme_linedraw() +
+  labs(
+    title = "Final Random Forest Model: Observed vs Predicted Streamflow",
+    x = "Observed log(Qmean)",
+    y = "Predicted log(Qmean)",
+    color = "Aridity"
+  )
+```
+
+My written answer: The final random forest model achieved an R^2 of approximatel 0.88 on the held out test set with an RMSE of 0.40, showing a strong predictive performance for log mean streamflow. This performance is slightly higher than the spatial cross validation estimate, suggesting that some residual spatial dependence my still be inflating random split performance. The model appears to perform best in moderate aridity regions but shows greater error in extreme dry basins, where streamflow is more intermittent. The results suggest good generalization ability, but spatial structure in the data still plays an important role in prediction accuracy. 
 
 # Rubric
 
