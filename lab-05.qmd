@@ -1287,7 +1287,8 @@ test_data <- camels_test %>%
 preds <- bind_cols(test_data, preds)
 ```
 
-```{r}
+```{r}#
+#blocked for render issue
 #for error
 #found there are two logQmean colmun in data
 preds_clean <- preds %>%
@@ -1296,11 +1297,34 @@ preds_clean <- preds %>%
          aridity)
 ```
 
+```{r}
+preds_clean <- collect_predictions(final_rf_last)
+
+preds_clean <- preds_clean %>%
+  mutate(
+    logQmean = camels_test$logQmean,
+    aridity  = camels_test$aridity
+  )
+```
 
 ```{r}
 library(ggplot2)
 ```
 
+```{r}#
+#render issue
+ggplot(preds_clean, aes(x = logQmean, y = .pred, color = aridity)) +
+  geom_point(alpha = 0.7) +
+  geom_abline(linetype = "dashed") +
+  scale_color_viridis_c() +
+  theme_linedraw() +
+  labs(
+    title = "Final Random Forest Model: Observed vs Predicted Streamflow",
+    x = "Observed log(Qmean)",
+    y = "Predicted log(Qmean)",
+    color = "Aridity"
+  )
+```
 ```{r}
 ggplot(preds_clean, aes(x = logQmean, y = .pred, color = aridity)) +
   geom_point(alpha = 0.7) +
